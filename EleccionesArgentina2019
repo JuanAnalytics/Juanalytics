@@ -1,0 +1,71 @@
+library(twitteR)
+library(tidyverse)
+library(tm)
+library(wordcloud2)
+library(tidytext)
+
+
+# Aqui van las credenciales que les otorga twitter
+consumer_key = "_____________"
+consumer_secret = "_______________"
+access_token = "__________________"
+access_secret = "__________________"
+
+# Aqui se autorizan las credenciales de twitter y se elige opcion 1
+setup_twitter_oauth(consumer_key,consumer_secret,access_token,access_secret)
+
+# BUSCAR TWEETS
+tweets_elecciones <- searchTwitter("eleccionesargentina",n=10000,lang="es")
+
+# Convertir tweets a texto en un data frame y eliminamos retweets
+tweets_elecciones_texto <- data.frame(tweets=sapply(tweets_elecciones,function(x) x$getText()),stringsAsFactors=F)%>%
+                            unique()
+
+# Cargar el archivo de "stopwords"
+stopwords=read.csv('sw.csv',stringsAsFactors = F)
+
+# Tokenizar palabras
+palabrastweets=tweets_elecciones_texto%>%
+               unnest_tokens(palabra,tweets)
+
+# Limpiar el texto para evitar duplicados
+palabrastweets_filtrado=palabrastweets%>%
+                        filter(!grepl('rt',palabra))%>%
+                        filter(!grepl('https',palabra))%>%
+                        filter(!grepl('t.co',palabra))%>%
+                        filter(!grepl('eleccionesargentina',palabra))%>%
+                        filter(!grepl('10',palabra))%>%
+                        filter(!grepl('27',palabra))%>%
+                        filter(!grepl('elecciones',palabra))%>%
+                        filter(!grepl('elecciones2019',palabra))%>%
+                        filter(!grepl('mauriciomacri',palabra))%>%
+                        filter(!grepl('lolopan21',palabra))%>%
+                        filter(!grepl('esta',palabra))%>%
+                        filter(!grepl('candidato',palabra))%>%
+                        filter(!grepl('electoral',palabra))%>%
+                        filter(!grepl('presidente',palabra))%>%
+                        filter(!grepl('juangrabois',palabra))%>%
+                        filter(!grepl('alferdez',palabra))%>%
+                        filter(!grepl('hernandobry',palabra))%>%
+                        filter(!grepl('karina',palabra))%>%
+                        filter(!grepl('politica',palabra))%>%
+                        filter(!grepl('frente',palabra))%>%
+                        filter(!grepl('paso2019',palabra))%>%
+                        filter(!grepl('paso',palabra))%>%
+                        mutate(palabra=gsub("á","a",palabra))%>%
+                        mutate(palabra=gsub("é","e",palabra))%>%
+                        mutate(palabra=gsub("ó","o",palabra))%>%
+                        mutate(palabra=gsub("í","i",palabra))%>%
+                        mutate(palabra=gsub("ú","u",palabra))
+
+# Eliminar palabras que no sirven
+palabrastweets_filtrado=palabrastweets_filtrado%>%
+                        anti_join(stopwords,by="palabra")
+
+# Contar la mayor cantidad de palabras y seleccionar las 20 mas usadas
+palabrastweets20=palabrastweets_filtrado%>%
+                 count(palabra)%>%
+                 top_n(20,n)
+
+# Armamos el wordcloud
+wordcloud2(palabrastweets20, background="black")
