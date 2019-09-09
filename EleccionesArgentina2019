@@ -15,7 +15,7 @@ access_secret = "__________________"
 setup_twitter_oauth(consumer_key,consumer_secret,access_token,access_secret)
 
 # BUSCAR TWEETS
-tweets_elecciones <- searchTwitter("eleccionesargentina",n=10000,lang="es")
+tweets_elecciones <- searchTwitter("eleccionesargentina",n=1000,lang="es")
 
 # Convertir tweets a texto en un data frame y eliminamos retweets
 tweets_elecciones_texto <- data.frame(tweets=sapply(tweets_elecciones,function(x) x$getText()),stringsAsFactors=F)%>%
