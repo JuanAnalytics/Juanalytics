@@ -1,0 +1,81 @@
+library(tidyverse)
+library(tidytext)
+library(purrr)
+library(rvest)
+library(ggplot2)
+
+# definimos los url que se utilizaran para analizar y en el numero de pagina lo hacemos dinamico.
+url_bumeran="https://www.bumeran.com.ar/empleos-publicacion-menor-a-1-mes-pagina-%d.html"
+url_zonajobs="https://www.zonajobs.com.ar/ofertas-de-empleo-publicacion-menor-a-1-mes-pagina-%d.html"
+
+# creamos los dataframes usando web scrapping
+map_df(1:212,function(i){
+      pagina <- read_html(sprintf(url_bumeran,i))
+      data.frame(titulo=html_text(html_nodes(pagina,".titulo-aviso")))
+}) -> bumeran
+
+map_df(1:90,function(i){
+  pagina <- read_html(sprintf(url_zonajobs,i))
+  data.frame(titulo=html_text(html_nodes(pagina,".titulo-aviso")))
+}) -> zonajobs
+
+# limpiamos los dataframes de stopwords para un mejor analisis
+palabra_bumeran=bumeran%>%
+  mutate(titulo=tolower(titulo))%>%
+  mutate(titulo=gsub("á","a",titulo))%>%
+  mutate(titulo=gsub("é","e",titulo))%>%
+  mutate(titulo=gsub("í","i",titulo))%>%
+  mutate(titulo=gsub("ó","o",titulo))%>%
+  mutate(titulo=gsub("ú","u",titulo))%>%
+  mutate(titulo=gsub("/","",titulo))%>%
+  mutate(titulo=gsub("-","",titulo))%>%
+  mutate(titulo=gsub("\\.","",titulo))%>%
+  mutate(titulo=gsub(",","",titulo))%>%
+  mutate(titulo=gsub("\\(","",titulo))%>%
+  mutate(titulo=gsub("\\)","",titulo))
+
+palabra_zonajobs=zonajobs%>%
+  mutate(titulo=tolower(titulo))%>%
+  mutate(titulo=gsub("á","a",titulo))%>%
+  mutate(titulo=gsub("é","e",titulo))%>%
+  mutate(titulo=gsub("í","i",titulo))%>%
+  mutate(titulo=gsub("ó","o",titulo))%>%
+  mutate(titulo=gsub("ú","u",titulo))%>%
+  mutate(titulo=gsub("/","",titulo))%>%
+  mutate(titulo=gsub("-","",titulo))%>%
+  mutate(titulo=gsub("\\.","",titulo))%>%
+  mutate(titulo=gsub(",","",titulo))%>%
+  mutate(titulo=gsub("\\(","",titulo))%>%
+  mutate(titulo=gsub("\\)","",titulo))
+
+# creamos el dataframe de stopwords
+sw=read.csv('sw.csv',stringsAsFactors = F)
+
+# separamos los titulos en palabras unicas
+palabra_bumeran=palabra_bumeran%>%
+                unnest_tokens(palabra,titulo)
+
+palabra_zonajobs=palabra_zonajobs%>%
+                unnest_tokens(palabra,titulo)
+
+# unimos los 2 dataframes para conseguir un dataframe unico
+palabras_total=semi_join(palabra_bumeran,palabra_zonajobs,by="palabra")
+
+# eliminamos los stopwords (o palabras que no aportan)
+palabras_final=palabras_total%>%
+               anti_join(sw,by="palabra")
+
+# contamos las palabras que mas veces se repiten
+palabras_final=palabras_final%>%
+               count(palabra)%>%
+               top_n(20,n)
+
+# ordenmaos las filas de mayor a menor
+palabras_final=palabras_final%>%
+               arrange(-n)
+
+# armamos el grafico
+ggplot(palabras_final,aes(x=reorder(palabra,n),y=n,fill=n))+
+  geom_col()+
+  coord_flip()+
+  labs(title="Palabras mas usadas en publicaciones de BUMERAN y ZONAJOBS en Septiembre 2019",x="Palabras",y="cantidad")
